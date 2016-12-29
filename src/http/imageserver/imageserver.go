@@ -17,6 +17,7 @@ import (
 )
 
 const warehouse = "warehouse/"
+var imgCache *cache.Cache
 
 func imageHandler(w http.ResponseWriter, r *http.Request, filename string) {
 	image := getImageByName(filename);
@@ -28,14 +29,14 @@ func imageHandler(w http.ResponseWriter, r *http.Request, filename string) {
 		image = resizer.Resize(uint (width), uint (height), image);
 	}	
 	
-	writeImage(w, &image);
+	writeImage(w, image);
 }
 
-func getImageByName(filename string) image.Image {
-	var image = cache.Get(filename)
+func getImageByName(filename string) *image.Image {
+	var image = imgCache.Get(filename)
 	if image == nil {
 		image,_,_ := decode(filename)
-		cache.Set(filename, image)
+		imgCache.Set(filename, &image)
 	}
 	
 	return image
@@ -79,6 +80,8 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 }
 
 func main() {
+	imgCache = cache.New()
+
 	argsWithProg := os.Args
 	
 	if len(argsWithProg) > 1 {

@@ -16,17 +16,17 @@ var blur = 1.0
 // If one of the parameters width or height is set to 0, its size will be calculated so that
 // the aspect ratio is that of the originating image.
 // The resizing algorithm uses channels for parallel computation.
-func Resize(width, height uint, img image.Image) image.Image {
-	scaleX, scaleY := calcFactors(width, height, float64(img.Bounds().Dx()), float64(img.Bounds().Dy()))
+func Resize(width, height uint, img *image.Image) *image.Image {
+	scaleX, scaleY := calcFactors(width, height, float64((*img).Bounds().Dx()), float64((*img).Bounds().Dy()))
 	if width == 0 {
-		width = uint(0.7 + float64(img.Bounds().Dx())/scaleX)
+		width = uint(0.7 + float64((*img).Bounds().Dx())/scaleX)
 	}
 	if height == 0 {
-		height = uint(0.7 + float64(img.Bounds().Dy())/scaleY)
+		height = uint(0.7 + float64((*img).Bounds().Dy())/scaleY)
 	}
 
 	// Trivial case: return input image
-	if int(width) == img.Bounds().Dx() && int(height) == img.Bounds().Dy() {
+	if int(width) == (*img).Bounds().Dx() && int(height) == (*img).Bounds().Dy() {
 		return img
 	}
 
@@ -36,7 +36,7 @@ func Resize(width, height uint, img image.Image) image.Image {
 
 	// Generic access to image.Image is slow in tight loops.
 	// The optimal access has to be determined from the concrete image type.
-	switch input := img.(type) {
+	switch input := (*img).(type) {
 		case *image.YCbCr:
 			// 8-bit precision
 			// accessing the YCbCr arrays in a tight loop is slow.
@@ -66,7 +66,8 @@ func Resize(width, height uint, img image.Image) image.Image {
 				}()
 			}
 			wg.Wait()
-			return result.YCbCr()
+			ycbcr := image.Image(result.YCbCr())
+			img = &ycbcr
 		default:
 			log.Println("Unknown image type")
 	}
