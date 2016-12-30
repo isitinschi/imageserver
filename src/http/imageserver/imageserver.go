@@ -13,50 +13,26 @@ import (
 	
 	"image/resizer"
 	"cache"
+	"cache/builder"
 	
 	"image/jpeg"
 )
 
-const warehouse = "warehouse/"
 var imgCache *cache.Cache
 
 func imageHandler(w http.ResponseWriter, r *http.Request, filename string) {
 	defer timeTrack(time.Now(), filename)
 	
-	image := getImageByName(filename);
+	image := imgCache.Get(filename)
 	
 	width,_ := strconv.Atoi(r.URL.Query().Get("w"))
 	height,_ := strconv.Atoi(r.URL.Query().Get("h"))
 	
 	if width != 0 || height != 0 {
-		defer timeTrack(time.Now(), "Resize and response writing")
 		image = resizer.Resize(uint (width), uint (height), image);
 	}	
 	
 	writeImage(w, image);
-}
-
-func getImageByName(filename string) *image.Image {
-	var image = imgCache.Get(filename)
-	if image == nil {
-		image = decode(filename)
-		imgCache.Set(filename, image)
-	}
-	
-	return image
-}
-
-func decode(filename string) *image.Image {
-	f, err := os.Open(warehouse + filename)
-    if err != nil {
-		log.Println("File not found")
-    	return nil
-    }
-    	
-	image,_,_ := image.Decode(f)
-	
-	defer f.Close()
-    return &image
 }
 
 // writeImage encodes an image 'img' in jpeg format and writes it into ResponseWriter.
@@ -86,18 +62,30 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
     }
 }
 
-func main() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
+func initialize() {
+	log.Printf("IMAGESERVER INITIALIZATION")
+		
+	cpus := runtime.NumCPU()
+	runtime.GOMAXPROCS(cpus)
+	log.Printf("IMAGESERVER: Setting GOMAXPROCS=%v", cpus)
 	
+	log.Printf("IMAGESERVER: Cache initialization")
 	imgCache = cache.New()
+	builder.Build(imgCache)
+	
+	log.Printf("IMAGESERVER INITIALIZATION FINISHED")
+}
 
+func startServer() {
 	argsWithProg := os.Args
 	
+	port := "8080"
 	if len(argsWithProg) > 1 {
-		listenAndServe(argsWithProg[1])
+		port = argsWithProg[1]
 	}
 	
-	listenAndServe("8080");
+	defer listenAndServe(port);
+	log.Printf("IMAGESERVER STARTED ON PORT %s", port)
 }
 
 func listenAndServe(port string) {
@@ -108,4 +96,9 @@ func listenAndServe(port string) {
 func timeTrack(start time.Time, filename string) {
     elapsed := time.Since(start)
     log.Printf("INFO: request for %s took %s", filename, elapsed)
+}
+
+func main() {
+	initialize();
+	startServer();
 }

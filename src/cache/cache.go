@@ -14,7 +14,7 @@ func New() *Cache {
     return &Cache{table : make(map[string]*image.Image), lock: new(sync.RWMutex)}
 }
 
-func (cache *Cache)Get(key string) *image.Image {
+func (cache *Cache) Get(key string) *image.Image {
 	return cache.table[key]
 }
 
