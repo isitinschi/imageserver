@@ -17,21 +17,22 @@ var blur = 1.0
 // the aspect ratio is that of the originating image.
 // The resizing algorithm uses channels for parallel computation.
 func Resize(width, height uint, img *image.Image) *image.Image {
-	scaleX, scaleY := calcFactors(width, height, float64((*img).Bounds().Dx()), float64((*img).Bounds().Dy()))
+	bounds := (*img).Bounds()
+	scaleX, scaleY := calcFactors(width, height, float64(bounds.Dx()), float64(bounds.Dy()))
 	if width == 0 {
-		width = uint(0.7 + float64((*img).Bounds().Dx())/scaleX)
+		width = uint(0.7 + float64(bounds.Dx())/scaleX)
 	}
 	if height == 0 {
-		height = uint(0.7 + float64((*img).Bounds().Dy())/scaleY)
+		height = uint(0.7 + float64(bounds.Dy())/scaleY)
 	}
 
 	// Trivial case: return input image
-	if int(width) == (*img).Bounds().Dx() && int(height) == (*img).Bounds().Dy() {
+	if int(width) == bounds.Dx() && int(height) == bounds.Dy() {
 		return img
 	}
 
 	taps, kernel := 6, lanczos3
-	cpus := runtime.GOMAXPROCS(0)
+	cpus := runtime.GOMAXPROCS(runtime.NumCPU())
 	wg := sync.WaitGroup{}
 
 	// Generic access to image.Image is slow in tight loops.

@@ -4,11 +4,12 @@ import (
     "net/http"
 	"regexp"
 	"os"
-	"bufio"
 	"image"
 	"strconv"
 	"log"
 	"bytes"
+	"time"
+	"runtime"
 	
 	"image/resizer"
 	"cache"
@@ -20,12 +21,15 @@ const warehouse = "warehouse/"
 var imgCache *cache.Cache
 
 func imageHandler(w http.ResponseWriter, r *http.Request, filename string) {
+	defer timeTrack(time.Now(), filename)
+	
 	image := getImageByName(filename);
 	
 	width,_ := strconv.Atoi(r.URL.Query().Get("w"))
 	height,_ := strconv.Atoi(r.URL.Query().Get("h"))
 	
 	if width != 0 || height != 0 {
+		defer timeTrack(time.Now(), "Resize and response writing")
 		image = resizer.Resize(uint (width), uint (height), image);
 	}	
 	
@@ -35,21 +39,24 @@ func imageHandler(w http.ResponseWriter, r *http.Request, filename string) {
 func getImageByName(filename string) *image.Image {
 	var image = imgCache.Get(filename)
 	if image == nil {
-		image,_,_ := decode(filename)
-		imgCache.Set(filename, &image)
+		image = decode(filename)
+		imgCache.Set(filename, image)
 	}
 	
 	return image
 }
 
-func decode(filename string) (image.Image, string, error) {
+func decode(filename string) *image.Image {
 	f, err := os.Open(warehouse + filename)
     if err != nil {
 		log.Println("File not found")
-    	return nil, "", err
+    	return nil
     }
-    defer f.Close()
-    return image.Decode(bufio.NewReader(f))
+    	
+	image,_,_ := image.Decode(f)
+	
+	defer f.Close()
+    return &image
 }
 
 // writeImage encodes an image 'img' in jpeg format and writes it into ResponseWriter.
@@ -80,6 +87,8 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 }
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+	
 	imgCache = cache.New()
 
 	argsWithProg := os.Args
@@ -94,4 +103,9 @@ func main() {
 func listenAndServe(port string) {
 	http.HandleFunc("/image/", makeHandler(imageHandler))
     http.ListenAndServe(":" + port, nil)
+}
+
+func timeTrack(start time.Time, filename string) {
+    elapsed := time.Since(start)
+    log.Printf("INFO: request for %s took %s", filename, elapsed)
 }
