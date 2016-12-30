@@ -24,11 +24,15 @@ func Build(cache *cache.Cache) {
 	log.Printf("BUILDER: Populating image cache...")
 
 	for _, file := range files {
-		filename := file.Name();
-		cache.Set(filename, decode(filename))
+		filename := file.Name()
+		populate(cache, filename)
 	}
 	
 	log.Printf("BUILDER: Finished building image cache.")
+}
+
+func populate(cache *cache.Cache, filename string) {
+	cache.Set(filename, decode(filename))
 }
 
 func decode(filename string) *image.Image {
@@ -39,7 +43,7 @@ func decode(filename string) *image.Image {
     }
     	
 	image,_,_ := image.Decode(f)
-	
+		
 	defer f.Close()
     return &image
 }

@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"time"
 	"runtime"
+	"runtime/debug"
 	
 	"image/resizer"
 	"cache"
@@ -33,6 +34,8 @@ func imageHandler(w http.ResponseWriter, r *http.Request, filename string) {
 	}	
 	
 	writeImage(w, image);
+	
+	debug.FreeOSMemory()
 }
 
 // writeImage encodes an image 'img' in jpeg format and writes it into ResponseWriter.
