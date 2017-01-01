@@ -14,7 +14,7 @@ import (
 	
 	"image/resizer"
 	"cache"
-	"cache/builder"
+	"warehouse/reader"
 	
 	"image/jpeg"
 )
@@ -24,7 +24,7 @@ var imgCache *cache.Cache
 func imageHandler(w http.ResponseWriter, r *http.Request, filename string) {
 	defer timeTrack(time.Now(), filename)
 	
-	image := imgCache.Get(filename)
+	image := getImageByName(filename)
 	
 	width,_ := strconv.Atoi(r.URL.Query().Get("w"))
 	height,_ := strconv.Atoi(r.URL.Query().Get("h"))
@@ -36,6 +36,16 @@ func imageHandler(w http.ResponseWriter, r *http.Request, filename string) {
 	writeImage(w, image);
 	
 	debug.FreeOSMemory()
+}
+
+func getImageByName(filename string) *image.Image {
+	image := imgCache.Get(filename)
+	if (image == nil) {
+		image = reader.Decode(filename)
+		imgCache.Set(filename, image)
+	}
+	
+	return image
 }
 
 // writeImage encodes an image 'img' in jpeg format and writes it into ResponseWriter.
@@ -72,9 +82,7 @@ func initialize() {
 	runtime.GOMAXPROCS(cpus)
 	log.Printf("IMAGESERVER: Setting GOMAXPROCS=%v", cpus)
 	
-	log.Printf("IMAGESERVER: Cache initialization")
 	imgCache = cache.New()
-	builder.Build(imgCache)
 	
 	log.Printf("IMAGESERVER INITIALIZATION FINISHED")
 }

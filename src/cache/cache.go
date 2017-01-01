@@ -2,24 +2,39 @@ package cache
 
 import (
 	"image"
-	"sync"
+	"cache/lru"
 )
 
+const number_of_images_to_cache = 100
+
 type Cache struct {
-	table map[string]*image.Image
-	lock *sync.RWMutex
+	lru *lru.LRUCache
+}
+
+type Value struct {
+	image *image.Image
+}
+
+func (v *Value) Size() int {
+	return 1
 }
 
 func New() *Cache {
-    return &Cache{table : make(map[string]*image.Image), lock: new(sync.RWMutex)}
+    return &Cache{
+		lru: lru.NewLRUCache(number_of_images_to_cache),
+	}
 }
 
 func (cache *Cache) Get(key string) *image.Image {
-	return cache.table[key]
+	value, ok := cache.lru.Get(key)
+	if !ok {
+		return nil
+	}
+
+	return value.(*Value).image
 }
 
 func (cache *Cache) Set(key string, image *image.Image) {
-	cache.lock.Lock()
-    defer cache.lock.Unlock()
-	cache.table[key] = image
+	value := &Value{image}
+	cache.lru.Set(key, value)
 }
