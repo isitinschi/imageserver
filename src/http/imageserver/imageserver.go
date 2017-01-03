@@ -130,6 +130,7 @@ func startServer() {
 func listenAndServe(port string) {
 	http.HandleFunc("/", makeHandler(imageHandler))
 	http.HandleFunc("/status/", statusHandler)
+	http.Handle("/favicon.ico", http.FileServer(http.Dir("./warehouse")))
     http.ListenAndServe(":" + port, nil)
 }
 
