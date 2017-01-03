@@ -24,7 +24,7 @@ var queryCount int = 0
 var failedQueryCount int = 0
 var startTime time.Time = time.Now()
 
-func statusHandler(w http.ResponseWriter, r *http.Request, filename string) {
+func statusHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Status:\n")
 	fmt.Fprintf(w, "Query count: %v\n", queryCount)
 	fmt.Fprintf(w, "Failed query count: %v\n", failedQueryCount)
@@ -89,7 +89,7 @@ func writeImage(w http.ResponseWriter, img *image.Image) {
     }
 }
 
-var validPath = regexp.MustCompile("^/(image|status)/(.*)$")
+var validPath = regexp.MustCompile("^/(.*)$")
 
 func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
@@ -99,7 +99,7 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 			http.NotFound(w, r)			
             return
         }
-        fn(w, r, m[2])
+        fn(w, r, m[1])
     }
 }
 
@@ -128,8 +128,8 @@ func startServer() {
 }
 
 func listenAndServe(port string) {
-	http.HandleFunc("/image/", makeHandler(imageHandler))
-	http.HandleFunc("/status/", makeHandler(statusHandler))
+	http.HandleFunc("/", makeHandler(imageHandler))
+	http.HandleFunc("/status/", statusHandler)
     http.ListenAndServe(":" + port, nil)
 }
 
