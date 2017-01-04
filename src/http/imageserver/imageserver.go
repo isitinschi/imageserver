@@ -5,6 +5,7 @@ import (
     "net/http"
 	"regexp"
 	"os"
+	"io"
 	"image"
 	"strconv"
 	"log"
@@ -23,8 +24,6 @@ import (
 var queryCount int = 0
 var failedQueryCount int = 0
 var startTime time.Time = time.Now()
-var lastModified string = time.Now().Format(http.TimeFormat)
-var expires string = time.Now().AddDate(0, 0, 30).Format(http.TimeFormat)
 
 func statusHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Status:\n")
@@ -56,10 +55,12 @@ func imageHandler(w http.ResponseWriter, r *http.Request, filename string) {
 		image = resizer.Resize(uint (width), uint (height), image);
 	}	
 	
-	writeImage(w, image);
+	file := writeImage(w, image);
 	
-	debug.FreeOSMemory()
+	defer debug.FreeOSMemory()
 	queryCount += 1
+	
+	http.ServeContent(w, r, filename, startTime, file)
 }
 
 func getImageByName(filename string) *image.Image {
@@ -76,22 +77,14 @@ func getImageByName(filename string) *image.Image {
 }
 
 // writeImage encodes an image 'img' in jpeg format and writes it into ResponseWriter.
-func writeImage(w http.ResponseWriter, img *image.Image) {
+func writeImage(w http.ResponseWriter, img *image.Image) io.ReadSeeker {
     buffer := new(bytes.Buffer)
     if err := jpeg.Encode(buffer, *img, nil); err != nil {
         log.Println("unable to encode image.")
 		failedQueryCount += 1
     }
-
-    w.Header().Set("Content-Type", "image/jpeg")
-    w.Header().Set("Content-Length", strconv.Itoa(len(buffer.Bytes())))
-	w.Header().Set("Cache-Control", "max-age:604800, public")
-	w.Header().Set("Last-Modified", lastModified)
-	w.Header().Set("Expires", expires)
-    if _, err := w.Write(buffer.Bytes()); err != nil {
-        log.Println("unable to write image.")
-		failedQueryCount += 1
-    }
+	
+	return bytes.NewReader(buffer.Bytes());
 }
 
 var validPath = regexp.MustCompile("^/(.*)$")
