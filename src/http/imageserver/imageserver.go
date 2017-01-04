@@ -23,6 +23,8 @@ import (
 var queryCount int = 0
 var failedQueryCount int = 0
 var startTime time.Time = time.Now()
+var lastModified string = time.Now().Format(http.TimeFormat)
+var expires string = time.Now().AddDate(0, 0, 30).Format(http.TimeFormat)
 
 func statusHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Status:\n")
@@ -83,6 +85,9 @@ func writeImage(w http.ResponseWriter, img *image.Image) {
 
     w.Header().Set("Content-Type", "image/jpeg")
     w.Header().Set("Content-Length", strconv.Itoa(len(buffer.Bytes())))
+	w.Header().Set("Cache-Control", "max-age:604800, public")
+	w.Header().Set("Last-Modified", lastModified)
+	w.Header().Set("Expires", expires)
     if _, err := w.Write(buffer.Bytes()); err != nil {
         log.Println("unable to write image.")
 		failedQueryCount += 1
