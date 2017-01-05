@@ -13,12 +13,14 @@ import (
 	"time"
 	"runtime"
 	"runtime/debug"
+	"strings"
 	
 	"image/resizer"
 	"cache"
 	"warehouse/reader"
 	
 	"image/jpeg"
+	"image/png"
 )
 
 var queryCount int = 0
@@ -55,7 +57,7 @@ func imageHandler(w http.ResponseWriter, r *http.Request, filename string) {
 		image = resizer.Resize(uint (width), uint (height), image);
 	}	
 	
-	file := writeImage(w, image);
+	file := writeImage(w, image, filename);
 	
 	defer debug.FreeOSMemory()
 	queryCount += 1
@@ -77,12 +79,22 @@ func getImageByName(filename string) *image.Image {
 }
 
 // writeImage encodes an image 'img' in jpeg format and writes it into ResponseWriter.
-func writeImage(w http.ResponseWriter, img *image.Image) io.ReadSeeker {
+func writeImage(w http.ResponseWriter, img *image.Image, filename string) io.ReadSeeker {
     buffer := new(bytes.Buffer)
-    if err := jpeg.Encode(buffer, *img, nil); err != nil {
-        log.Println("unable to encode image.")
-		failedQueryCount += 1
-    }
+	
+	if strings.HasSuffix(filename, ".jpg") {
+		if err := jpeg.Encode(buffer, *img, nil); err != nil {
+			log.Println("unable to encode image.")
+			failedQueryCount += 1
+		}
+	} else if strings.HasSuffix(filename, ".png") {
+		if err := png.Encode(buffer, *img); err != nil {
+			log.Println("unable to encode image.")
+			failedQueryCount += 1
+		}
+	} else {
+		log.Println("Unknown file extension")		
+	}
 	
 	return bytes.NewReader(buffer.Bytes());
 }
