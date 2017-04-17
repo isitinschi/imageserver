@@ -5,7 +5,7 @@ import (
 	"cache/lru"
 )
 
-const number_of_images_to_cache = 100
+const number_of_images_to_cache = 50
 
 type Cache struct {
 	lru *lru.LRUCache
