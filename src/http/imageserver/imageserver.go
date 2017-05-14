@@ -28,7 +28,7 @@ var failedQueryCount int = 0
 var startTime time.Time = time.Now()
 
 func statusHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "Status:\n")
+	fmt.Fprintln(w, "Status:")
 	fmt.Fprintf(w, "Query count: %v\n", queryCount)
 	fmt.Fprintf(w, "Failed query count: %v\n", failedQueryCount)
 	fmt.Fprintf(w, "Start time: %v\n", startTime)
