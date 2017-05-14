@@ -23,9 +23,9 @@ import (
 	"image/png"
 )
 
-var queryCount int = 0
-var failedQueryCount int = 0
-var startTime time.Time = time.Now()
+var queryCount int
+var failedQueryCount int
+var startTime = time.Now()
 
 func statusHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Status:")
@@ -44,7 +44,7 @@ func imageHandler(w http.ResponseWriter, r *http.Request, filename string) {
 
 	image := getImageByName(filename)
 	if image == nil {
-		failedQueryCount += 1
+		failedQueryCount++
 		http.NotFound(w, r)
 		return
 	}
@@ -59,7 +59,7 @@ func imageHandler(w http.ResponseWriter, r *http.Request, filename string) {
 	file := writeImage(w, image, filename)
 
 	defer debug.FreeOSMemory()
-	queryCount += 1
+	queryCount++
 
 	http.ServeContent(w, r, filename, startTime, file)
 }
@@ -84,12 +84,12 @@ func writeImage(w http.ResponseWriter, img *image.Image, filename string) io.Rea
 	if strings.HasSuffix(filename, ".jpg") {
 		if err := jpeg.Encode(buffer, *img, nil); err != nil {
 			log.Println("unable to encode image.")
-			failedQueryCount += 1
+			failedQueryCount++
 		}
 	} else if strings.HasSuffix(filename, ".png") {
 		if err := png.Encode(buffer, *img); err != nil {
 			log.Println("unable to encode image.")
-			failedQueryCount += 1
+			failedQueryCount++
 		}
 	} else {
 		log.Println("Unknown file extension")
@@ -104,7 +104,7 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 	return func(w http.ResponseWriter, r *http.Request) {
 		m := validPath.FindStringSubmatch(r.URL.Path)
 		if m == nil {
-			failedQueryCount += 1
+			failedQueryCount++
 			http.NotFound(w, r)
 			return
 		}

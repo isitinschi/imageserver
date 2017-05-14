@@ -5,7 +5,7 @@ import (
 	"image"
 )
 
-const number_of_images_to_cache = 50
+const numberOfImagesToCache = 50
 
 type Cache struct {
 	lru *lru.LRUCache
@@ -21,7 +21,7 @@ func (v *Value) Size() int {
 
 func New() *Cache {
 	return &Cache{
-		lru: lru.NewLRUCache(number_of_images_to_cache),
+		lru: lru.NewLRUCache(numberOfImagesToCache),
 	}
 }
 
