@@ -2,21 +2,21 @@ package reader
 
 import (
 	"image"
-	"os"
 	"log"
+	"os"
 )
 
 const Warehouse = "warehouse/"
 
 func Decode(filename string) *image.Image {
 	f, err := os.Open(Warehouse + filename)
-    if err != nil {
+	if err != nil {
 		log.Println("File not found")
-    	return nil
-    }
-    	
-	image,_,_ := image.Decode(f)
-		
+		return nil
+	}
+
+	image, _, _ := image.Decode(f)
+
 	defer f.Close()
-    return &image
+	return &image
 }

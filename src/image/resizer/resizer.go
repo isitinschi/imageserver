@@ -2,10 +2,10 @@ package resizer
 
 import (
 	"image"
+	"log"
+	"math"
 	"runtime"
 	"sync"
-	"math"
-	"log"
 )
 
 // values <1 will sharpen the image
@@ -38,72 +38,72 @@ func Resize(width, height uint, img *image.Image) *image.Image {
 	// Generic access to image.Image is slow in tight loops.
 	// The optimal access has to be determined from the concrete image type.
 	switch input := (*img).(type) {
-		case *image.YCbCr:
-			// 8-bit precision
-			// accessing the YCbCr arrays in a tight loop is slow.
-			// converting the image to ycc increases performance by 2x.
-			temp := newYCC(image.Rect(0, 0, input.Bounds().Dy(), int(width)), input.SubsampleRatio)
-			result := newYCC(image.Rect(0, 0, int(width), int(height)), image.YCbCrSubsampleRatio444)
+	case *image.YCbCr:
+		// 8-bit precision
+		// accessing the YCbCr arrays in a tight loop is slow.
+		// converting the image to ycc increases performance by 2x.
+		temp := newYCC(image.Rect(0, 0, input.Bounds().Dy(), int(width)), input.SubsampleRatio)
+		result := newYCC(image.Rect(0, 0, int(width), int(height)), image.YCbCrSubsampleRatio444)
 
-			coeffs, offset, filterLength := createWeights8(temp.Bounds().Dy(), taps, blur, scaleX, kernel)
-			in := imageYCbCrToYCC(input)
-			wg.Add(cpus)
-			for i := 0; i < cpus; i++ {
-				slice := makeSlice(temp, i, cpus).(*ycc)
-				go func() {
-					defer wg.Done()
-					resizeYCbCr(in, slice, scaleX, coeffs, offset, filterLength)
-				}()
-			}
-			wg.Wait()
+		coeffs, offset, filterLength := createWeights8(temp.Bounds().Dy(), taps, blur, scaleX, kernel)
+		in := imageYCbCrToYCC(input)
+		wg.Add(cpus)
+		for i := 0; i < cpus; i++ {
+			slice := makeSlice(temp, i, cpus).(*ycc)
+			go func() {
+				defer wg.Done()
+				resizeYCbCr(in, slice, scaleX, coeffs, offset, filterLength)
+			}()
+		}
+		wg.Wait()
 
-			coeffs, offset, filterLength = createWeights8(result.Bounds().Dy(), taps, blur, scaleY, kernel)
-			wg.Add(cpus)
-			for i := 0; i < cpus; i++ {
-				slice := makeSlice(result, i, cpus).(*ycc)
-				go func() {
-					defer wg.Done()
-					resizeYCbCr(temp, slice, scaleY, coeffs, offset, filterLength)
-				}()
-			}
-			wg.Wait()
-			ycbcr := image.Image(result.YCbCr())
-			img = &ycbcr
-		default:
-			log.Printf("Unknown image type %T", input)
-			
-			// 16-bit precision
-			temp := image.NewRGBA64(image.Rect(0, 0, bounds.Dy(), int(width)))
-			result := image.NewRGBA64(image.Rect(0, 0, int(width), int(height)))
+		coeffs, offset, filterLength = createWeights8(result.Bounds().Dy(), taps, blur, scaleY, kernel)
+		wg.Add(cpus)
+		for i := 0; i < cpus; i++ {
+			slice := makeSlice(result, i, cpus).(*ycc)
+			go func() {
+				defer wg.Done()
+				resizeYCbCr(temp, slice, scaleY, coeffs, offset, filterLength)
+			}()
+		}
+		wg.Wait()
+		ycbcr := image.Image(result.YCbCr())
+		img = &ycbcr
+	default:
+		log.Printf("Unknown image type %T", input)
 
-			// horizontal filter, results in transposed temporary image
-			coeffs, offset, filterLength := createWeights16(temp.Bounds().Dy(), taps, blur, scaleX, kernel)
-			wg.Add(cpus)
-			for i := 0; i < cpus; i++ {
-				slice := makeSlice(temp, i, cpus).(*image.RGBA64)
-				go func() {
-					defer wg.Done()
-					resizeGeneric(img, slice, scaleX, coeffs, offset, filterLength)
-				}()
-			}
-			wg.Wait()
+		// 16-bit precision
+		temp := image.NewRGBA64(image.Rect(0, 0, bounds.Dy(), int(width)))
+		result := image.NewRGBA64(image.Rect(0, 0, int(width), int(height)))
 
-			// horizontal filter on transposed image, result is not transposed
-			coeffs, offset, filterLength = createWeights16(result.Bounds().Dy(), taps, blur, scaleY, kernel)
-			wg.Add(cpus)
-			for i := 0; i < cpus; i++ {
-				slice := makeSlice(result, i, cpus).(*image.RGBA64)
-				go func() {
-					defer wg.Done()
-					resizeRGBA64(temp, slice, scaleY, coeffs, offset, filterLength)
-				}()
-			}
-			wg.Wait()
-			
-			rgba64 := image.Image(result)
-			img = &rgba64
+		// horizontal filter, results in transposed temporary image
+		coeffs, offset, filterLength := createWeights16(temp.Bounds().Dy(), taps, blur, scaleX, kernel)
+		wg.Add(cpus)
+		for i := 0; i < cpus; i++ {
+			slice := makeSlice(temp, i, cpus).(*image.RGBA64)
+			go func() {
+				defer wg.Done()
+				resizeGeneric(img, slice, scaleX, coeffs, offset, filterLength)
+			}()
+		}
+		wg.Wait()
+
+		// horizontal filter on transposed image, result is not transposed
+		coeffs, offset, filterLength = createWeights16(result.Bounds().Dy(), taps, blur, scaleY, kernel)
+		wg.Add(cpus)
+		for i := 0; i < cpus; i++ {
+			slice := makeSlice(result, i, cpus).(*image.RGBA64)
+			go func() {
+				defer wg.Done()
+				resizeRGBA64(temp, slice, scaleY, coeffs, offset, filterLength)
+			}()
+		}
+		wg.Wait()
+
+		rgba64 := image.Image(result)
+		img = &rgba64
 	}
-	
+
 	return img
 }
 

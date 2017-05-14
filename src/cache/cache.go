@@ -1,8 +1,8 @@
 package cache
 
 import (
-	"image"
 	"cache/lru"
+	"image"
 )
 
 const number_of_images_to_cache = 50
@@ -20,7 +20,7 @@ func (v *Value) Size() int {
 }
 
 func New() *Cache {
-    return &Cache{
+	return &Cache{
 		lru: lru.NewLRUCache(number_of_images_to_cache),
 	}
 }

@@ -1,12 +1,12 @@
 package cache_test
 
 import (
-	"log"
 	"io/ioutil"
+	"log"
 
 	"cache"
-	"warehouse/reader"
 	"testing"
+	"warehouse/reader"
 )
 
 func TestCachePopulating(t *testing.T) {
@@ -19,7 +19,7 @@ func TestCachePopulating(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	log.Printf("BUILDER: Found %v images", len(files))
 	log.Printf("BUILDER: Populating image cache...")
 
@@ -27,11 +27,10 @@ func TestCachePopulating(t *testing.T) {
 		filename := file.Name()
 		populate(cache, filename)
 	}
-	
+
 	log.Printf("BUILDER: Finished building image cache.")
 }
 
 func populate(cache *cache.Cache, filename string) {
 	cache.Set(filename, reader.Decode(filename))
 }
-
